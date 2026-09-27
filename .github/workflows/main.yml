@@ -1,0 +1,26 @@
+name: Frankenstein CPU Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cpu-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Frankenstein CPU/RAM information
+        run: |
+          echo "=== FRANKENSTEIN CPU NODE ==="
+          echo ""
+          echo "CPU:"
+          nproc
+          lscpu | grep -E "Model name|CPU\(s\)"
+          echo ""
+          echo "RAM:"
+          free -h
+          echo ""
+          echo "DISK:"
+          df -h /
+          echo ""
+          echo "SYSTEM:"
+          uname -a

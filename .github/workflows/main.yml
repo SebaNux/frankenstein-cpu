@@ -1,26 +1,41 @@
-name: Frankenstein CPU Test
+name: Frankenstein CPU Worker
 
 on:
   workflow_dispatch:
+    inputs:
+      job:
+        description: "Trabajo que ejecutará el CPU worker"
+        required: true
+        default: "test"
 
 jobs:
-  cpu-test:
+  cpu-worker:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Frankenstein CPU/RAM information
+      - name: Frankenstein CPU Worker
+        env:
+          JOB: ${{ inputs.job }}
         run: |
-          echo "=== FRANKENSTEIN CPU NODE ==="
+          echo "=== FRANKENSTEIN CPU WORKER ==="
+          echo "Job recibido: $JOB"
           echo ""
-          echo "CPU:"
-          nproc
-          lscpu | grep -E "Model name|CPU\(s\)"
-          echo ""
-          echo "RAM:"
-          free -h
-          echo ""
-          echo "DISK:"
-          df -h /
-          echo ""
-          echo "SYSTEM:"
-          uname -a
+
+          if [ "$JOB" = "test" ]; then
+            echo "Ejecutando prueba de CPU..."
+
+            python3 - <<'PY'
+          import hashlib
+
+          data = b"frankenstein"
+          for i in range(1000000):
+              data = hashlib.sha256(data).digest()
+
+          print("Trabajo terminado")
+          print("Resultado:", data.hex())
+          PY
+
+          else
+            echo "Trabajo desconocido: $JOB"
+            exit 1
+          fi

@@ -3,27 +3,15 @@ name: Frankenstein CPU Worker
 on:
   workflow_dispatch:
     inputs:
-      job_id:
-        description: "ID unico del trabajo"
-        required: true
-        type: string
-
       job:
         description: "Tipo de trabajo"
         required: true
-        type: string
+        default: "test"
 
       payload:
         description: "Datos del trabajo en JSON"
         required: false
         default: "{}"
-        type: string
-
-      callback_url:
-        description: "URL de retorno de Frankenstein"
-        required: true
-        type: string
-
 
 jobs:
   cpu-worker:
@@ -32,13 +20,13 @@ jobs:
     steps:
       - name: Frankenstein CPU Worker
         env:
-          JOB_ID: ${{ inputs.job_id }}
           JOB: ${{ inputs.job }}
           PAYLOAD: ${{ inputs.payload }}
+          CALLBACK_SECRET: ${{ secrets.FRANKENSTEIN_CALLBACK_SECRET }}
+          CALLBACK_URL: https://frankenstein-gateway.sebastian-ulloa-verges.workers.dev/github-callback
 
         run: |
           echo "=== FRANKENSTEIN CPU WORKER ==="
-          echo "Job ID: $JOB_ID"
           echo "Job recibido: $JOB"
           echo ""
 
@@ -46,20 +34,16 @@ jobs:
           import os
           import json
           import hashlib
+          import urllib.request
+          import urllib.error
 
-          job_id = os.environ["JOB_ID"]
           job = os.environ["JOB"]
 
           try:
-              payload = json.loads(
-                  os.environ.get("PAYLOAD", "{}")
-              )
+              payload = json.loads(os.environ.get("PAYLOAD", "{}"))
           except json.JSONDecodeError:
-              raise SystemExit(
-                  "ERROR: payload no es JSON valido"
-              )
+              raise SystemExit("ERROR: payload no es JSON valido")
 
-          print("Job ID:", job_id)
           print("Job:", job)
           print("Payload:", payload)
 
@@ -73,7 +57,6 @@ jobs:
 
               result = {
                   "status": "completed",
-                  "job_id": job_id,
                   "job": "test",
                   "result": data.hex()
               }
@@ -83,7 +66,6 @@ jobs:
 
               result = {
                   "status": "completed",
-                  "job_id": job_id,
                   "job": "sha256",
                   "input": text,
                   "result": hashlib.sha256(
@@ -94,52 +76,63 @@ jobs:
           else:
               result = {
                   "status": "error",
-                  "job_id": job_id,
-                  "job": job,
-                  "error": "unknown_job"
+                  "error": "unknown_job",
+                  "job": job
               }
 
           print("")
           print("=== RESULTADO ===")
           print(json.dumps(result))
 
-          with open(
-              "/tmp/frankenstein-result.json",
-              "w",
-              encoding="utf-8"
-          ) as f:
-              json.dump(result, f)
+          print("")
+          print("=== CALLBACK ===")
+
+          callback_url = os.environ["CALLBACK_URL"]
+          callback_secret = os.environ["CALLBACK_SECRET"]
+
+          body = json.dumps(result).encode("utf-8")
+
+          request = urllib.request.Request(
+              callback_url,
+              data=body,
+              method="POST",
+              headers={
+                  "Content-Type": "application/json",
+                  "X-Frankenstein-Secret": callback_secret
+              }
+          )
+
+          try:
+              with urllib.request.urlopen(
+                  request,
+                  timeout=15
+              ) as response:
+                  response_body = response.read().decode("utf-8")
+
+                  print(
+                      "Callback HTTP:",
+                      response.status
+                  )
+                  print(
+                      "Gateway:",
+                      response_body
+                  )
+
+          except urllib.error.HTTPError as error:
+              print(
+                  "Callback HTTP ERROR:",
+                  error.code
+              )
+              print(
+                  error.read().decode("utf-8")
+              )
+              raise
+
+          except Exception as error:
+              print(
+                  "Callback ERROR:",
+                  str(error)
+              )
+              raise
+
           PY
-
-
-      - name: Return result to Frankenstein
-        env:
-          CALLBACK_URL: ${{ inputs.callback_url }}
-          CALLBACK_SECRET: ${{ secrets.FRANKENSTEIN_CALLBACK_SECRET }}
-
-        run: |
-          echo "Devolviendo resultado a Frankenstein..."
-
-          HTTP_CODE=$(curl \
-            --silent \
-            --show-error \
-            --output /tmp/callback-response.txt \
-            --write-out "%{http_code}" \
-            --request POST \
-            --header "Content-Type: application/json" \
-            --header "Authorization: Bearer $CALLBACK_SECRET" \
-            --data-binary @/tmp/frankenstein-result.json \
-            "$CALLBACK_URL")
-
-          echo "Frankenstein HTTP status: $HTTP_CODE"
-
-          cat /tmp/callback-response.txt
-
-          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-            echo ""
-            echo "ERROR: Frankenstein rechazo el resultado."
-            exit 1
-          fi
-
-          echo ""
-          echo "Resultado entregado correctamente."

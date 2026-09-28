@@ -100,7 +100,8 @@ jobs:
               method="POST",
               headers={
                   "Content-Type": "application/json",
-                  "X-Frankenstein-Secret": callback_secret
+                  "X-Frankenstein-Secret": callback_secret,
+                  "User-Agent": "Mozilla/5.0 Frankenstein-CPU/1.0"
               }
           )
 

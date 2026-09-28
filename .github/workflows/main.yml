@@ -4,9 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       job:
-        description: "Trabajo que ejecutará el CPU worker"
+        description: "Tipo de trabajo"
         required: true
         default: "test"
+
+      payload:
+        description: "Datos del trabajo en JSON"
+        required: false
+        default: "{}"
 
 jobs:
   cpu-worker:
@@ -16,26 +21,62 @@ jobs:
       - name: Frankenstein CPU Worker
         env:
           JOB: ${{ inputs.job }}
+          PAYLOAD: ${{ inputs.payload }}
+
         run: |
           echo "=== FRANKENSTEIN CPU WORKER ==="
           echo "Job recibido: $JOB"
           echo ""
 
-          if [ "$JOB" = "test" ]; then
-            echo "Ejecutando prueba de CPU..."
-
-            python3 - <<'PY'
+          python3 - <<'PY'
+          import os
+          import json
           import hashlib
 
-          data = b"frankenstein"
-          for i in range(1000000):
-              data = hashlib.sha256(data).digest()
+          job = os.environ["JOB"]
 
-          print("Trabajo terminado")
-          print("Resultado:", data.hex())
+          try:
+              payload = json.loads(os.environ.get("PAYLOAD", "{}"))
+          except json.JSONDecodeError:
+              raise SystemExit("ERROR: payload no es JSON valido")
+
+          print("Job:", job)
+          print("Payload:", payload)
+
+          if job == "test":
+              print("Ejecutando prueba de CPU...")
+
+              data = b"frankenstein"
+
+              for _ in range(1_000_000):
+                  data = hashlib.sha256(data).digest()
+
+              result = {
+                  "status": "completed",
+                  "job": "test",
+                  "result": data.hex()
+              }
+
+          elif job == "sha256":
+              text = str(payload.get("text", ""))
+
+              result = {
+                  "status": "completed",
+                  "job": "sha256",
+                  "input": text,
+                  "result": hashlib.sha256(
+                      text.encode("utf-8")
+                  ).hexdigest()
+              }
+
+          else:
+              result = {
+                  "status": "error",
+                  "error": "unknown_job",
+                  "job": job
+              }
+
+          print("")
+          print("=== RESULTADO ===")
+          print(json.dumps(result))
           PY
-
-          else
-            echo "Trabajo desconocido: $JOB"
-            exit 1
-          fi

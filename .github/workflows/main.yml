@@ -35,7 +35,6 @@ jobs:
           import json
           import hashlib
           import urllib.request
-          import urllib.error
 
           job = os.environ["JOB"]
 
@@ -84,17 +83,14 @@ jobs:
           print("=== RESULTADO ===")
           print(json.dumps(result))
 
-          print("")
-          print("=== CALLBACK ===")
-
           callback_url = os.environ["CALLBACK_URL"]
           callback_secret = os.environ["CALLBACK_SECRET"]
 
-          body = json.dumps(result).encode("utf-8")
+          callback_body = json.dumps(result).encode("utf-8")
 
           request = urllib.request.Request(
               callback_url,
-              data=body,
+              data=callback_body,
               method="POST",
               headers={
                   "Content-Type": "application/json",
@@ -102,37 +98,26 @@ jobs:
               }
           )
 
-          try:
-              with urllib.request.urlopen(
-                  request,
-                  timeout=15
-              ) as response:
-                  response_body = response.read().decode("utf-8")
+          print("")
+          print("Enviando resultado a Frankenstein Gateway...")
 
-                  print(
-                      "Callback HTTP:",
-                      response.status
+          with urllib.request.urlopen(request, timeout=15) as response:
+              response_body = response.read().decode("utf-8")
+
+              print(
+                  "Callback HTTP:",
+                  response.status
+              )
+
+              print(
+                  "Callback response:",
+                  response_body
+              )
+
+              if response.status < 200 or response.status >= 300:
+                  raise SystemExit(
+                      "ERROR: callback rechazado"
                   )
-                  print(
-                      "Gateway:",
-                      response_body
-                  )
 
-          except urllib.error.HTTPError as error:
-              print(
-                  "Callback HTTP ERROR:",
-                  error.code
-              )
-              print(
-                  error.read().decode("utf-8")
-              )
-              raise
-
-          except Exception as error:
-              print(
-                  "Callback ERROR:",
-                  str(error)
-              )
-              raise
-
+          print("Resultado entregado correctamente.")
           PY

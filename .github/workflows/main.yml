@@ -86,6 +86,12 @@ jobs:
           callback_url = os.environ["CALLBACK_URL"]
           callback_secret = os.environ["CALLBACK_SECRET"]
 
+          # Diagnostico seguro: NO imprime el secreto
+          print("")
+          print("=== DIAGNOSTICO CALLBACK ===")
+          print("CALLBACK_SECRET presente:", bool(callback_secret))
+          print("CALLBACK_SECRET longitud:", len(callback_secret))
+
           callback_body = json.dumps(result).encode("utf-8")
 
           request = urllib.request.Request(

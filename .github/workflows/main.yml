@@ -35,7 +35,6 @@ jobs:
           import json
           import hashlib
           import urllib.request
-          import urllib.error
 
           job = os.environ["JOB"]
 
@@ -87,11 +86,6 @@ jobs:
           callback_url = os.environ["CALLBACK_URL"]
           callback_secret = os.environ["CALLBACK_SECRET"]
 
-          print("")
-          print("=== DIAGNOSTICO CALLBACK ===")
-          print("CALLBACK_SECRET presente:", bool(callback_secret))
-          print("CALLBACK_SECRET longitud:", len(callback_secret))
-
           callback_body = json.dumps(result).encode("utf-8")
 
           request = urllib.request.Request(
@@ -108,33 +102,14 @@ jobs:
           print("")
           print("Enviando resultado a Frankenstein Gateway...")
 
-          try:
-              with urllib.request.urlopen(request, timeout=15) as response:
-                  response_body = response.read().decode("utf-8")
+          with urllib.request.urlopen(request, timeout=15) as response:
+              response_body = response.read().decode("utf-8")
 
-                  print("Callback HTTP:", response.status)
-                  print("Callback response:", response_body)
+              print("Callback HTTP:", response.status)
+              print("Callback response:", response_body)
 
-                  if response.status < 200 or response.status >= 300:
-                      raise SystemExit("ERROR: callback rechazado")
-
-          except urllib.error.HTTPError as e:
-              print("")
-              print("=== CALLBACK HTTP ERROR ===")
-              print("Status:", e.code)
-              print("Reason:", e.reason)
-              print("Headers:")
-              print(e.headers)
-
-              error_body = e.read().decode(
-                  "utf-8",
-                  errors="replace"
-              )
-
-              print("Body:")
-              print(error_body)
-
-              raise
+              if response.status < 200 or response.status >= 300:
+                  raise SystemExit("ERROR: callback rechazado")
 
           print("Resultado entregado correctamente.")
           PY

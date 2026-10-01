@@ -23,7 +23,7 @@ jobs:
           JOB: ${{ inputs.job }}
           PAYLOAD: ${{ inputs.payload }}
           CALLBACK_SECRET: ${{ secrets.FRANKENSTEIN_CALLBACK_SECRET }}
-          CALLBACK_URL: https://frankenstein-gateway.sebastian-ulloa-verges.workers.dev/github-callback
+          CALLBACK_URL: https://frankenstein-gateway.frankenstein-cloud.workers.dev/github-callback
 
         run: |
           echo "=== FRANKENSTEIN CPU WORKER ==="
